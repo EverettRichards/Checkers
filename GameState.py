@@ -4,9 +4,7 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 import time
 from IPython.display import clear_output
 
-# double jumps not yet implemented
-# no moves left = you lose
-# haven't implemented alphazero
+# TODO: Implement AlphaZero
 
 cmap = ListedColormap(['firebrick', 'lemonchiffon', 'darkseagreen', 'midnightblue', 'goldenrod'])
 bounds = [-4, -2, 0, 2, 4, 6]
