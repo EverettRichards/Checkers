@@ -2,6 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 import time
+from IPython.display import clear_output
+
+# double jumps not yet implemented
+# no moves left = you lose
+# haven't implemented alphazero
 
 cmap = ListedColormap(['firebrick', 'lemonchiffon', 'darkseagreen', 'midnightblue', 'goldenrod'])
 bounds = [-4, -2, 0, 2, 4, 6]
@@ -93,52 +98,75 @@ class GameState:
         elif i >= self.n or j >= self.n:
             return -11,None
         else:
-            #getPlayer normalization justified because this function is only used to see if a space is taken, and by whom
+            #getPlayer normalization is justified because this function is only used to see if a space is taken, and by whom
             return self.getPlayer(self.board[i][j]), abs(self.board[i][j])==2 # is it a king?
-        
-    def getLegalMoves(self,p):
+
+    def getPieceMoveOptions(self,i,j):
+        p,is_king = self.getPiece(i,j)
+        directions = [-1,1] if is_king else [1]
+
+        output = []
+        can_jump = False # If you *can* jump, you *must* jump
+
+        for LR in [-1,1]: # You can go left OR right
+            for DIR in directions: # Kings can go forward OR backward
+                i1,i2,j1,j2 = i+p*DIR,i+2*p*DIR,j+LR,j+2*LR
+                
+                diag_piece,_ = self.getPiece(i1,j1)
+                if diag_piece < -1: continue # Out of bounds
+
+                if diag_piece == -p:
+                    # enemy! query further
+                    next_diag_piece,_ = self.getPiece(i2,j2)
+                    if next_diag_piece < -1: continue # Out of bounds
+                    if next_diag_piece == 0:
+                        # can successfully jump! do something...
+                        if not can_jump:
+                            can_jump = True
+                            output = []
+                        output.append([(i,j),(i2,j2),-p])
+                    else:
+                        # jump is blocked.
+                        pass
+                elif diag_piece == 0 and not can_jump:
+                    # i've got a blank space, baby
+                    output.append([(i,j),(i1,j1),0])
+        return output,can_jump
+
+    def getLegalMoves(self,p,double_jump_piece=(-1,-1)):
         # p: player (+1 = blue, -1 = red)
         num_queried = 0
         n = self.n
         board = self.board
-        legal_moves = [] # elements look like [start (i,j), end (i,j), move type (0 = move, 1 = capture a blue, -1 = capture a red)]
+        legal_moves = [] # elements look like [start (i,j), end (i,j), move type, end(i,j), move type, ...] (0 = move, 1 = capture a blue, -1 = capture a red)
+        any_can_jump = False
+
+        double_jump_mode = double_jump_piece[0] != -1
 
         for i in range(n):
+            if double_jump_mode and i != double_jump_piece[0]:
+                continue
             for j in range(n):
+                if double_jump_mode and j != double_jump_piece[1]:
+                    continue
                 current_piece, is_king = self.getPiece(i,j)
-                directions = [-1,1] if is_king else [1]
                 if current_piece == p:
                     num_queried += 1
-                    for LR in [-1,1]: # You can go left OR right
-                        for DIR in directions: # Kings can go forward OR backward
-                            i1,i2,j1,j2 = i+p*DIR,i+2*p*DIR,j+LR,j+2*LR
-                            
-                            diag_piece,_ = self.getPiece(i1,j1)
-
-                            if diag_piece < -1: continue # Out of bounds
-
-                            if diag_piece == p:
-                                # blocked
-                                continue
-                            elif diag_piece == -p:
-                                # enemy! query further
-                                next_diag_piece,_ = self.getPiece(i2,j2)
-                                if next_diag_piece < -1: continue # Out of bounds
-                                if next_diag_piece == 0:
-                                    # can successfully jump! do something...
-                                    legal_moves.append([(i,j),(i2,j2),-p])
-                                else:
-                                    # jump is blocked.
-                                    pass
-                            else:
-                                # i've got a blank space, baby
-                                legal_moves.append([(i,j),(i1,j1),0])
-
+                    move_options,piece_can_jump = self.getPieceMoveOptions(i,j)
+                    if len(move_options) > 0:
+                        if piece_can_jump and not any_can_jump:
+                            any_can_jump = True
+                            legal_moves = move_options.copy()
+                        elif any_can_jump and not piece_can_jump:
+                            pass # Only non-capture moves available for the piece, but some captures can be done elsewhere
+                        else:
+                            legal_moves.extend(move_options) # Concatenate the new move options
                     if num_queried >= self.howManyLeft(p):
                         break
             if num_queried >= self.howManyLeft(p):
                     break
-        return legal_moves
+        
+        return legal_moves,any_can_jump
         
     def performMove(self,move):
         # assume that the move is well-defined and valid as a precondition
@@ -153,3 +181,57 @@ class GameState:
             self.decrementPlayer(action)
         if not is_king and ((p==1 and i1==self.n-1) or (p==-1 and i1==0)):
             self.board[i1][j1] *= 2
+
+    def playRandomGame(self,max_turns=100,wait_time_ms=1000,debug=False):
+        p = 1
+        turn = 1
+        winner = 0
+        winner_names = ["Red","(DRAW)","Blue"]
+        double_jump_piece = (-1,-1)
+
+        while True:
+            # Get a list of legal moves
+            legal_moves,any_can_jump = self.getLegalMoves(p,double_jump_piece=double_jump_piece)
+
+            # Out of luck? End the game!
+            if len(legal_moves)==0:
+                winner = -p
+                break
+            
+            if turn > max_turns:
+                winner = 0
+                break
+            
+            if not debug:
+                clear_output()
+
+            # Select one of the legal moves that the player can make
+            move = legal_moves[0]
+            if len(legal_moves) > 1:
+                move = legal_moves[np.random.randint(0,len(legal_moves)-1)]
+
+            # Actually execute the move
+            self.performMove(move)
+
+            # Visually plot the results of the move
+            self.plot(wait_time_ms=wait_time_ms,last_move=move[1])
+
+            # Prepare for the next loop iteration
+
+            # If you can double jump, do it!
+            i1,j1 = move[1][0],move[1][1]
+            _,can_jump_again = self.getPieceMoveOptions(i1,j1)
+            if move[2] == 0:
+                can_jump_again = False # Can't "double jump" after a non-capture move
+            if can_jump_again:
+                double_jump_piece = (i1,j1)
+                if debug:
+                    print("#"*50)
+                    print("DOUBLE JUMP DETECTED")
+                    print("#"*50)
+            else:
+                double_jump_piece = (-1,-1)
+                p = -p # switch players :)
+            turn += 1
+        winner_name = winner_names[winner+1]
+        print(f"{winner_name} won after {turn-1} turns!")
