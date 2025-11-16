@@ -12,8 +12,8 @@ x is the column, y is the row.
 '''
 class Board():
 
-    # list of all 8 directions on the board, as (x,y) offsets
-    __directions = [(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1),(0,1)]
+    # list of all 4 directions on the board, as (x,y) offsets
+    __directions = [(1,1),(1,-1),(-1,-1),(-1,1)]
 
     def __init__(self, n):
         "Set up initial board configuration."
@@ -132,24 +132,6 @@ class Board():
             elif self[x][y] == -color:
                 # print("Flip",x,y)
                 flips.append((x, y))
-
-    def _get_flips(self, origin, direction, color):
-        """ Gets the list of flips for a vertex and direction to use with the
-        execute_move function """
-        #initialize variables
-        flips = [origin]
-
-        for x, y in Board._increment_move(origin, direction, self.n):
-            #print(x,y)
-            if self[x][y] == 0:
-                return []
-            if self[x][y] == -color:
-                flips.append((x, y))
-            elif self[x][y] == color and len(flips) > 0:
-                #print(flips)
-                return flips
-
-        return []
 
     @staticmethod
     def _increment_move(move, direction, n):

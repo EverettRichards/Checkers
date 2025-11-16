@@ -13,7 +13,7 @@ class RandomPlayer():
         return a
 
 
-class HumanOthelloPlayer():
+class HumanCheckersPlayer():
     def __init__(self, game):
         self.game = game
 
@@ -41,7 +41,7 @@ class HumanOthelloPlayer():
         return a
 
 
-class GreedyOthelloPlayer():
+class GreedyCheckersPlayer():
     def __init__(self, game):
         self.game = game
 
@@ -57,12 +57,12 @@ class GreedyOthelloPlayer():
         candidates.sort()
         return candidates[0][1]
 
-class GTPOthelloPlayer():
+class GTPCheckersPlayer():
     """
-    Player that plays with Othello programs using the Go Text Protocol.
+    Player that plays with Checkers programs using the Go Text Protocol.
     """
 
-    # The colours are reversed as the Othello programs seems to have the board setup with the opposite colours
+    # The colours are reversed as the Checkers programs seems to have the board setup with the opposite colours
     player_colors = {
         -1: "white",
          1: "black",
@@ -104,13 +104,13 @@ class GTPOthelloPlayer():
         """
         Should be called after the opponent turn. This way we can update the GTP client with the opponent move.
         """
-        color = GTPOthelloPlayer.player_colors[self._currentPlayer]
+        color = GTPCheckersPlayer.player_colors[self._currentPlayer]
         move = self._convertActionToMove(action)
         self._sendCommand("play {} {}".format(color, move))
         self._switchPlayers()
 
     def play(self, board):
-        color = GTPOthelloPlayer.player_colors[self._currentPlayer]
+        color = GTPCheckersPlayer.player_colors[self._currentPlayer]
         move = self._sendCommand("genmove {}".format(color))
         action = self._convertMoveToAction(move)
         self._switchPlayers()
