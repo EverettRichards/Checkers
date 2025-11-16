@@ -31,6 +31,12 @@ class GameState:
     def __str__(self):
         return str(self.board)
     
+    def getBoardSize(self):
+        return (self.n, self.n)
+
+    def getActionSize(self):
+        return self.n * self.n * 16 # 16 possible moves...
+    
     def plot(self,x=8,pad=1,crown_size=2,wait_time_ms=1000,last_move=None):
         # x: square size
         # p: padding size
